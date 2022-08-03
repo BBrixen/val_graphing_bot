@@ -5,7 +5,7 @@ import numpy as np
 import traceback
 import os
 import valorant
-from constants import DC_TOKEN, VAL_TOKEN
+from constants import DC_TOKEN
 
 # note of order of csv data
 # dc_username, kda, acs, rr, duration, kills, deaths, assists, mapId, character, rounds_played, rating
