@@ -5,7 +5,7 @@ import numpy as np
 import traceback
 import os
 import valorant
-from constants import DC_TOKEN
+from constants import DC_TOKEN, VAL_TOKEN
 
 # note of order of csv data
 # dc_username, kda, acs, rr, duration, kills, deaths, assists, mapId, character, rounds_played, rating
@@ -18,6 +18,7 @@ graph_image = "valorant_graph.png"
 
 # global variables (yuck, but i must)
 client = discord.Client()
+val_client = valorant.Client(VAL_TOKEN)
 dc_to_val_user = {}
 
 
@@ -138,7 +139,7 @@ async def on_message(message):
     if message.author == client.user or not message.content.startswith(prefix):
         return
 
-    msg = message.content[len(prefix):].strip().lower()
+    msg = message.content[len(prefix):].strip()
 
     if msg.startswith("wakka"):
         await message.channel.send("<:wakkawakka:968379435231379536>")
@@ -153,6 +154,8 @@ async def on_message(message):
         username = message.author.mention
         riot_name = msg[8:].strip()
         dc_to_val_user[username] = ValorantUser(riot_name)
+        await save_user_data(username, riot_name)
+        await message.channel.send("registered new valorant user")
 
     if msg.startswith("help"):
         await message.channel.send("Hello there! Firstly, here are the valid commands:\n"
@@ -237,11 +240,17 @@ async def on_message(message):
 
             username = message.author.mention
             val_user = dc_to_val_user[username]
-            # TODO: add API request
+            account = val_client.get_user_by_name(val_user.riot_name)
+            if account is None:
+                return
 
-            game = val_user.register_game_api(new_game_data["rating"], new_game_data["rr"], None, None)
+            match_list = account.matchlist().history
+            match_list.sort(key=lambda x: x.gameStartMillis)
 
-            await save_game_data(game, username)
+            for match in match_list:
+                game = val_user.register_game_api(new_game_data["rating"], new_game_data["rr"], match.get())
+                await save_game_data(game, username)
+
             await message.channel.send("successfully added the data")
 
         except Exception as e:
@@ -359,6 +368,18 @@ async def save_game_data(game, username) -> None:
         writer.writerow(game.csv_repr(username))
 
 
+async def save_user_data(username, val_name) -> None:
+    """
+    This saves the newly created game
+    :param val_name: valorant name that belongs to this user
+    :param username: to associate data with dc user
+    :return: Nothing, this saves to a file
+    """
+    with open(user_save_file, 'a') as file:
+        writer = csv.writer(file)
+        writer.writerow([username, val_name])
+
+
 def load_game_data():
     """
     This reads previous game data into a csv in case the bot crashes.
@@ -378,7 +399,7 @@ def load_game_data():
     except FileNotFoundError:
         with open(game_save_file, 'w') as file:
             writer = csv.writer(file)
-            writer.writerow(["kda", "acs", "rr", "time", "rating", "duration", "game_counter", "map"])
+            writer.writerow(["dc_username", "kda", "acs", "rr", "time", "rating", "duration", "game_counter", "map"])
 
 
 def load_user_data():
@@ -398,6 +419,7 @@ def load_user_data():
 
 
 def main() -> None:
+    load_user_data()
     load_game_data()
     client.run(DC_TOKEN)
 
