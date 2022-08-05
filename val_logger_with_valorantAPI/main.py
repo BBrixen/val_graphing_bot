@@ -244,12 +244,20 @@ async def on_message(message):
             if account is None:
                 return
 
-            match_list = account.matchlist().history
-            match_list.sort(key=lambda x: x.gameStartMillis)
+            print(account)
+            match = account.matchlist().history.find(queueId="competitive")
+            print(match)
 
-            for match in match_list:
-                game = val_user.register_game_api(new_game_data["rating"], new_game_data["rr"], match.get())
-                await save_game_data(game, username)
+            # print(account)
+            # print(account.gameName)
+            # print(account.matchlist())
+            # match_list = account.matchlist().history
+            # print(match_list)
+            # match_list.sort(key=lambda x: x.gameStartMillis)
+            #
+            # for match in match_list:
+            #     game = val_user.register_game_api(new_game_data["rating"], new_game_data["rr"], match.get())
+            #     await save_game_data(game, username)
 
             await message.channel.send("successfully added the data")
 
